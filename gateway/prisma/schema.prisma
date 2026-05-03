@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+
+  apiKeys ApiKey[]
+  routes  Route[]
+}
+
+model ApiKey {
+  id        String    @id @default(cuid())
+  key       String    @unique
+  name      String
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isActive  Boolean   @default(true)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+
+  logs       RequestLog[]
+  rateLimits RateLimit[]
+}
+
+model Route {
+  id        String   @id @default(cuid())
+  prefix    String
+  targetUrl String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, prefix])
+}
+
+model RateLimit {
+  id           String   @id @default(cuid())
+  apiKeyId     String
+  apiKey       ApiKey   @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  windowStart  DateTime
+  requestCount Int      @default(0)
+  maxRequests  Int      @default(100)
+
+  @@unique([apiKeyId, windowStart])
+  @@index([apiKeyId, windowStart])
+}
+
+model RequestLog {
+  id         String   @id @default(cuid())
+  apiKeyId   String
+  apiKey     ApiKey   @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  method     String
+  path       String
+  targetUrl  String
+  statusCode Int
+  latencyMs  Int
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([apiKeyId, createdAt])
+  @@index([createdAt])
+  @@index([statusCode])
+}
