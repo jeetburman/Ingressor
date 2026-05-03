@@ -1,64 +1,109 @@
-import Image from "next/image";
+import { StatsCard } from '../components/StatsCard';
+import { TimeseriesChart } from '../components/TimeseriesChart';
+import { TopRoutes } from '../components/TopRoutes';
+import { RecentRequests } from '../components/RecentRequests';
+import { ThemeToggle } from '../components/ThemeToggle';
 
-export default function Home() {
+async function getData() {
+  try {
+    const res = await fetch('http://localhost:3000/analytics/overview', { cache: 'no-store' });
+    const timeSeries = await fetch('http://localhost:3000/analytics/timeseries', { cache: 'no-store' });
+    const topRoutes = await fetch('http://localhost:3000/analytics/top-routes', { cache: 'no-store' });
+    const recent = await fetch('http://localhost:3000/analytics/recent', { cache: 'no-store' });
+
+    return {
+      overview:   await res.json(),
+      timeseries: (await timeSeries.json()).map((r: any) => ({
+        hour:  new Date(r.hour).getHours() + ':00',
+        count: r.count,
+      })),
+      topRoutes:  await topRoutes.json(),
+      recentLogs: await recent.json(),
+    };
+  } catch {
+    return { overview: null, timeseries: [], topRoutes: [], recentLogs: [] };
+  }
+}
+
+export default async function Dashboard() {
+  const { overview, timeseries, topRoutes, recentLogs } = await getData();
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div style={{ minHeight: '100vh', background: 'var(--bg-base)' }}>
+
+      {/* Navbar */}
+      <nav style={{
+        background: 'var(--bg-nav)',
+        borderBottom: '0.5px solid var(--border)',
+        padding: '14px 32px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{
+            width: 8, height: 8, borderRadius: '50%',
+            background: 'linear-gradient(135deg, #6366f1, #3b82f6)',
+          }} />
+          <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>
+            Ingressor
+          </span>
+        </div>
+        <ThemeToggle />
+      </nav>
+
+      {/* Main content */}
+      <main style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px' }}>
+
+        <h1 style={{ fontSize: 20, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 4 }}>
+          Overview
+        </h1>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 24 }}>
+          Last 24 hours
+        </p>
+
+        {/* Stats */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
+          <StatsCard label="Total requests" value={overview?.totalRequests ?? '—'} accent="blue" />
+          <StatsCard label="Errors"         value={overview?.errorCount    ?? '—'} accent="red"  />
+          <StatsCard label="Error rate"     value={overview ? `${overview.errorRate}%` : '—'} />
+          <StatsCard label="Avg latency"    value={overview ? `${overview.avgLatencyMs}ms` : '—'} accent="green" />
+        </div>
+
+        {/* Chart + Top Routes */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div style={{
+            background: 'var(--bg-card)', border: '0.5px solid var(--border)',
+            borderRadius: 10, padding: 16,
+          }}>
+            <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 14 }}>
+              Requests per hour
+            </p>
+            <TimeseriesChart data={timeseries} />
+          </div>
+
+          <div style={{
+            background: 'var(--bg-card)', border: '0.5px solid var(--border)',
+            borderRadius: 10, padding: 16,
+          }}>
+            <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 14 }}>
+              Top routes
+            </p>
+            <TopRoutes data={topRoutes} />
+          </div>
+        </div>
+
+        {/* Recent Requests */}
+        <div style={{
+          background: 'var(--bg-card)', border: '0.5px solid var(--border)',
+          borderRadius: 10, padding: 16,
+        }}>
+          <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 14 }}>
+            Recent requests
           </p>
+          <RecentRequests data={recentLogs} />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+
       </main>
     </div>
   );

@@ -58,4 +58,13 @@ router.get('/top-routes', async (_req: Request, res: Response) => {
   res.json(rows.map((r) => ({ ...r, count: Number(r.count), avg_latency: Math.round(r.avg_latency) })));
 });
 
+// Recent logs — for the dashboard table
+router.get('/recent', async (_req: Request, res: Response) => {
+  const logs = await prisma.requestLog.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: 20,
+  });
+  res.json(logs);
+});
+
 export default router;
