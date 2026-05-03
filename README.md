@@ -6,7 +6,7 @@ Built with **Node.js**, **Express**, **TypeScript**, **Prisma**, **PostgreSQL (N
 
 ---
 
-# Architecture ERD
+## Architecture ERD
 ![Project Architecture](./dashboard/public/api_gateway_architecture.svg)
 
 ---
