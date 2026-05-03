@@ -88,6 +88,25 @@ Downstream Service :3001
 
 ---
 
+## Key design decisions
+
+**Why bcrypt for API keys instead of JWT?**
+API keys are long-lived credentials, not session tokens. bcrypt hashing means even if the database is compromised, raw keys are not exposed. The `gw_` prefix allows fast filtering before doing any hashing.
+
+**Why fire-and-forget for request logging?**
+Adding `await` to the log write would add database latency to every proxied request. Logging is best-effort - losing a few log entries on a crash is acceptable for an analytics use case.
+
+**Why longest-prefix match for routing?**
+This is how Nginx and Kubernetes Ingress controllers work. A request to `/users/profile` will match a `/users` route even if a broader `/` route also exists - the most specific match always wins.
+
+**Why a sliding window for rate limiting?**
+A fixed window (reset every minute on the clock) allows a burst of 2× the limit straddling a window boundary. A sliding window is fairer - the counter always represents the last 60 seconds of activity.
+
+**Why Postgres for rate limit counters instead of Redis?**
+Redis would be faster, but adds infrastructure complexity. Postgres with `upsert` handles this load comfortably up to ~1000 req/s. In a production system, you'd migrate counters to Redis while keeping config and logs in Postgres.
+
+---
+
 ## API reference
 
 ### Admin endpoints
@@ -192,24 +211,6 @@ Sample response from `/analytics/overview`:
 
 ---
 
-## Key design decisions
-
-**Why bcrypt for API keys instead of JWT?**
-API keys are long-lived credentials, not session tokens. bcrypt hashing means even if the database is compromised, raw keys are not exposed. The `gw_` prefix allows fast filtering before doing any hashing.
-
-**Why fire-and-forget for request logging?**
-Adding `await` to the log write would add database latency to every proxied request. Logging is best-effort - losing a few log entries on a crash is acceptable for an analytics use case.
-
-**Why longest-prefix match for routing?**
-This is how Nginx and Kubernetes Ingress controllers work. A request to `/users/profile` will match a `/users` route even if a broader `/` route also exists - the most specific match always wins.
-
-**Why a sliding window for rate limiting?**
-A fixed window (reset every minute on the clock) allows a burst of 2× the limit straddling a window boundary. A sliding window is fairer - the counter always represents the last 60 seconds of activity.
-
-**Why Postgres for rate limit counters instead of Redis?**
-Redis would be faster, but adds infrastructure complexity. Postgres with `upsert` handles this load comfortably up to ~1000 req/s. In a production system, you'd migrate counters to Redis while keeping config and logs in Postgres.
-
----
 
 ## What I might add next
 
